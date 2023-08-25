@@ -5,14 +5,16 @@
 
 pragma solidity 0.8.18;
 
-import "../../Teleporter/ITeleporterMessenger.sol";
+import "../../Teleporter/TeleporterCaller.sol";
+import "../../ProtocolRegistry/IWarpProtocolRegistry.sol";
 import "../../Teleporter/ITeleporterReceiver.sol";
 
 /**
  * Contract for receiving latest block hashes from another chain.
  */
 contract BlockHashReceiver is ITeleporterReceiver {
-    ITeleporterMessenger public immutable teleporterMessenger;
+    using TeleporterCaller public immutable for IWarpProtocolRegistry;
+    IWarpProtocolRegistry public immutable warpRegistry;
 
     // Source chain information
     bytes32 public immutable sourceChainID;
@@ -33,11 +35,11 @@ contract BlockHashReceiver is ITeleporterReceiver {
     );
 
     constructor(
-        address teleporterMessengerAddress,
+        address warpRegistryAddress,
         bytes32 publisherChainID,
         address publisherContractAddress
     ) {
-        teleporterMessenger = ITeleporterMessenger(teleporterMessengerAddress);
+        warpRegistry = IWarpProtocolRegistry(warpRegistryAddress);
         sourceChainID = publisherChainID;
         sourcePublisherContractAddress = publisherContractAddress;
     }
@@ -59,7 +61,7 @@ contract BlockHashReceiver is ITeleporterReceiver {
         bytes calldata message
     ) external {
         require(
-            msg.sender == address(teleporterMessenger),
+            msg.sender == warpRegistry.getTeleporterAddress(),
             "Unauthorized caller."
         );
         require(originChainID == sourceChainID, "Invalid source chain ID.");

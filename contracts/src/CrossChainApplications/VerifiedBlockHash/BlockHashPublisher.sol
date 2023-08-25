@@ -5,7 +5,8 @@
 
 pragma solidity 0.8.18;
 
-import "../../Teleporter/ITeleporterMessenger.sol";
+import "../../Teleporter/TeleporterCaller.sol";
+import "../../ProtocolRegistry/IWarpProtocolRegistry.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./BlockHashReceiver.sol";
 
@@ -13,7 +14,9 @@ import "./BlockHashReceiver.sol";
  * Contract that publishes the latest block hash of current chain to another chain.
  */
 contract BlockHashPublisher {
-    ITeleporterMessenger public immutable teleporterMessenger;
+    using TeleporterCaller for IWarpProtocolRegistry;
+
+    IWarpProtocolRegistry public immutable warpRegistry;
     uint256 public constant RECEIVE_BLOCK_HASH_REQUIRED_GAS_LIMIT = 1.5e5;
 
     /**
@@ -26,8 +29,8 @@ contract BlockHashPublisher {
         bytes32 blockHash
     );
 
-    constructor(address teleporterMessengerAddress) {
-        teleporterMessenger = ITeleporterMessenger(teleporterMessengerAddress);
+    constructor(address warpRegistryAddress) {
+        warpRegistry = IWarpProtocolRegistry(warpRegistryAddress);
     }
 
     /**
@@ -52,7 +55,7 @@ contract BlockHashPublisher {
             blockHeight,
             blockHash
         );
-        messageID = teleporterMessenger.sendCrossChainMessage(
+        messageID = warpRegistry.sendCrossChainMessage(
             TeleporterMessageInput({
                 destinationChainID: destinationChainID,
                 destinationAddress: destinationAddress,

@@ -5,7 +5,8 @@
 
 pragma solidity 0.8.18;
 
-import "../../Teleporter/ITeleporterMessenger.sol";
+import "../../Teleporter/TeleporterCaller.sol";
+import "../../ProtocolRegistry/IWarpProtocolRegistry.sol";
 import "../../Teleporter/SafeERC20TransferFrom.sol";
 import "../../Teleporter/ITeleporterReceiver.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -17,6 +18,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  */
 contract ExampleCrossChainMessenger is ITeleporterReceiver, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using TeleporterCaller for IWarpProtocolRegistry;
+
+    IWarpProtocolRegistry public immutable warpRegistry;
 
     // Messages sent to this contract.
     struct Message {
@@ -49,8 +53,8 @@ contract ExampleCrossChainMessenger is ITeleporterReceiver, ReentrancyGuard {
         string message
     );
 
-    constructor(address teleporterMessengerAddress) {
-        teleporterMessenger = ITeleporterMessenger(teleporterMessengerAddress);
+    constructor(address warpRegistryAddress) {
+        warpRegistry = IWarpProtocolRegistry(warpRegistryAddress);
     }
 
     /**
@@ -64,7 +68,10 @@ contract ExampleCrossChainMessenger is ITeleporterReceiver, ReentrancyGuard {
         bytes calldata message
     ) external {
         // Only the Teleporter receiver can deliver a message.
-        require(msg.sender == address(teleporterMessenger), "Unauthorized.");
+        require(
+            msg.sender == warpRegistry.getTeleporterAddress(),
+            "Unauthorized."
+        );
 
         // Store the message.
         string memory messageString = abi.decode(message, (string));
@@ -92,7 +99,7 @@ contract ExampleCrossChainMessenger is ITeleporterReceiver, ReentrancyGuard {
                 feeAmount
             );
             IERC20(feeContractAddress).safeIncreaseAllowance(
-                address(teleporterMessenger),
+                warpRegistry.getTeleporterAddress(),
                 adjustedFeeAmount
             );
         }
@@ -106,7 +113,7 @@ contract ExampleCrossChainMessenger is ITeleporterReceiver, ReentrancyGuard {
             message: message
         });
         return
-            teleporterMessenger.sendCrossChainMessage(
+            warpRegistry.sendCrossChainMessage(
                 TeleporterMessageInput({
                     destinationChainID: destinationChainID,
                     destinationAddress: destinationAddress,
